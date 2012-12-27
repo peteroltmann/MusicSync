@@ -1,16 +1,18 @@
 package sync;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
+import java.lang.reflect.Type;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 /**
  * Data structure for the iTunes Library, which holds Song objects.
@@ -107,16 +109,19 @@ public class Library {
     }
     
     public static void saveToFile(List<Song> songs, String fileName) throws IOException {
-        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fileName));
-        oos.writeObject(songs);
-        try { oos.close(); } catch (IOException e) {}
+        FileWriter out = new FileWriter(new File(fileName));
+        Gson gson = new Gson();
+        Type type = new TypeToken<List<Song>>(){}.getType();
+        gson.toJson(songs, type, out);
+        out.close();
     }
     
-    public static List<Song> readFromFile(String fileName) throws IOException, ClassNotFoundException {
-        ObjectInputStream ois = new ObjectInputStream(new FileInputStream(fileName));
-        @SuppressWarnings("unchecked")
-        List<Song> songs = (List<Song>) ois.readObject();
-        try { ois.close(); } catch (IOException e) {}
+    public static List<Song> readFromFile(String fileName) throws IOException {
+        FileReader in = new FileReader(new File(fileName));
+        Gson gson = new Gson();
+        Type type = new TypeToken<List<Song>>(){}.getType();
+        List<Song> songs = gson.fromJson(in, type);
+        in.close();
         return songs;
     }
     
@@ -127,12 +132,18 @@ public class Library {
     }
     
     public static void main(String[] args) {
-        List<Song> songs = Library.fill("C:\\Users\\Peter\\Music\\iTunes\\iTunes Media\\Music");
-        
+        List<Song> songs = Library.fill("C:\\Users\\Peter\\iTunes Media\\Music");
         try {
+            saveToFile(songs, "songs.json");
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        }
+        try {
+            songs = readFromFile("songs.json");
             Library.printToFile(songs, "C:\\Users\\Peter\\Desktop\\lib.txt");
-                    
         } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }

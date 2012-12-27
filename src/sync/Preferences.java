@@ -1,12 +1,13 @@
 package sync;
 
-import java.io.FileInputStream;
+import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
+
+import com.google.gson.Gson;
 
 public class Preferences implements Serializable {
 
@@ -15,23 +16,25 @@ public class Preferences implements Serializable {
     // path and file/dir constants
     public static final String USER_HOME = System.getProperty("user.home");
     public static final String PREFS_NAME = "Sync";
-    public static final String PREFS_FILENAME = "prefs.data";
-    public static final String SONGS_FILENAME = "songs.data";
+    public static final String PREFS_FILENAME = "prefs.json";
+    public static final String SONGS_FILENAME = "songs.json";
     
     // =========================================================================
     // Static methods                                                          =
     // =========================================================================
     
     public static void saveToFile(Preferences prefs) throws FileNotFoundException, IOException {
-        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(USER_HOME + "/" + PREFS_NAME + "/" + PREFS_FILENAME));
-        oos.writeObject(prefs);
-        try { oos.close(); } catch (IOException e) {}
+        FileWriter out = new FileWriter(new File(USER_HOME + "/" + PREFS_NAME + "/" + PREFS_FILENAME));
+        Gson gson = new Gson();
+        gson.toJson(prefs, out);
+        out.close();
     }
     
     public static Preferences readFromFile(String fileName) throws IOException, ClassNotFoundException {
-        ObjectInputStream ois = new ObjectInputStream(new FileInputStream(fileName));
-        Preferences prefs = (Preferences) ois.readObject();
-        try { ois.close(); } catch (IOException e) {}
+        FileReader in = new FileReader(new File(fileName));
+        Gson gson = new Gson();
+        Preferences prefs = gson.fromJson(in, Preferences.class);
+        in.close();
         return prefs;
     }
     

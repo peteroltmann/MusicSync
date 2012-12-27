@@ -56,12 +56,8 @@ public class LibraryTableModel extends AbstractTableModel {
             } catch (IOException e1) { // 3. (try) parse library
                 lib = Library.fill(prefs.getLibraryDir()); // 4. throw (on fail)
                 Collections.sort(lib);
-            } catch (ClassNotFoundException e1) { // (Song)
-                e1.printStackTrace();
             }
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        } // (Song)
+        }
         
         displayed = lib;
     }

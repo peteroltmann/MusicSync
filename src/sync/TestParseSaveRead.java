@@ -80,8 +80,6 @@ public class TestParseSaveRead {
             e.printStackTrace();
         } catch (IOException e) { // readObject
             e.printStackTrace();
-        } catch (ClassNotFoundException e) { // readObject
-            e.printStackTrace();
         } finally {
             try { if (ois != null) ois.close(); } catch (IOException e) {}
         }
