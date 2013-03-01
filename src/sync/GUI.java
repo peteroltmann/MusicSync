@@ -21,7 +21,15 @@ import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.io.File;
 import java.io.FileNotFoundException;
+import javax.swing.JSplitPane;
+import javax.swing.JList;
+import javax.swing.JTextArea;
+
+import playlists.Playlist;
+import javax.swing.event.ListSelectionListener;
+import javax.swing.event.ListSelectionEvent;
 
 public class GUI {
     
@@ -49,6 +57,7 @@ public class GUI {
     private static boolean isScanning = false; // flag to only start one rescan-thread
     
     private LibraryTableModel libModel;
+    private PlaylistListModel playlistsModel;
 
     private JFrame frame;
     private JTextField txtSearch;
@@ -74,10 +83,12 @@ public class GUI {
     private JTextField txtListsSyncDir;
     private JButton btnChooseListsSync;
     private JPanel playlistsPanel;
-    private JScrollPane scrollPane_1;
-    private JPanel panel;
+    private JPanel cvtPanel;
     private JButton btnSyncLists;
-    private JButton btnConvert;
+    private JButton btnRefresh;
+    private JTextArea playlistArea;
+    private JScrollPane playlistsScrollPane;
+    private JList<Playlist> playlistsList;
 
     /**
      * Create the application.
@@ -202,35 +213,52 @@ public class GUI {
         );
         
         playlistsPanel = new JPanel();
+        playlistsPanel.setOpaque(false);
         tabbedPane.addTab("Playlists", null, playlistsPanel, null);
         
-        scrollPane_1 = new JScrollPane();
+        cvtPanel = new JPanel();
+        cvtPanel.setOpaque(false);
         
-        panel = new JPanel();
-        panel.setOpaque(false);
-        
-        btnConvert = new JButton("Convert");
-        panel.add(btnConvert);
+        btnRefresh = new JButton("Refresh");
+        btnRefresh.addActionListener(new BtnRefreshActionListener());
+        cvtPanel.add(btnRefresh);
         
         btnSyncLists = new JButton("Sync");
-        panel.add(btnSyncLists);
+        btnSyncLists.addActionListener(new BtnSyncListsActionListener());
+        cvtPanel.add(btnSyncLists);
+        
+        JSplitPane splitPane = new JSplitPane();
         GroupLayout gl_playlistsPanel = new GroupLayout(playlistsPanel);
         gl_playlistsPanel.setHorizontalGroup(
             gl_playlistsPanel.createParallelGroup(Alignment.LEADING)
-                .addComponent(panel, GroupLayout.DEFAULT_SIZE, 753, Short.MAX_VALUE)
+                .addComponent(cvtPanel, GroupLayout.DEFAULT_SIZE, 759, Short.MAX_VALUE)
                 .addGroup(gl_playlistsPanel.createSequentialGroup()
-                    .addContainerGap()
-                    .addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 753, Short.MAX_VALUE)
+                    .addGap(10)
+                    .addComponent(splitPane, GroupLayout.DEFAULT_SIZE, 739, Short.MAX_VALUE)
                     .addContainerGap())
         );
         gl_playlistsPanel.setVerticalGroup(
             gl_playlistsPanel.createParallelGroup(Alignment.TRAILING)
                 .addGroup(gl_playlistsPanel.createSequentialGroup()
                     .addContainerGap()
-                    .addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 455, Short.MAX_VALUE)
-                    .addPreferredGap(ComponentPlacement.RELATED)
-                    .addComponent(panel, GroupLayout.PREFERRED_SIZE, 35, GroupLayout.PREFERRED_SIZE))
+                    .addComponent(splitPane, GroupLayout.DEFAULT_SIZE, 454, Short.MAX_VALUE)
+                    .addPreferredGap(ComponentPlacement.UNRELATED)
+                    .addComponent(cvtPanel, GroupLayout.PREFERRED_SIZE, 35, GroupLayout.PREFERRED_SIZE))
         );
+        
+        JScrollPane singleListScrollPane = new JScrollPane();
+        splitPane.setRightComponent(singleListScrollPane);
+        
+        playlistArea = new JTextArea();
+        playlistArea.setEditable(false);
+        singleListScrollPane.setViewportView(playlistArea);
+        
+        playlistsScrollPane = new JScrollPane();
+        splitPane.setLeftComponent(playlistsScrollPane);
+        
+        playlistsList = new JList<Playlist>();
+        playlistsList.addListSelectionListener(new PlaylistsListListSelectionListener());
+        playlistsScrollPane.setViewportView(playlistsList);
         playlistsPanel.setLayout(gl_playlistsPanel);
         
         JPanel configPanel = new JPanel();
@@ -346,7 +374,7 @@ public class GUI {
         frame.setVisible(b);
     }
     
-    public void setModel(LibraryTableModel dataModel) {
+    public void setLibraryModel(LibraryTableModel dataModel) {
         libTable.setModel(dataModel);
         libModel = dataModel;
         String size = String.format("%1.2f", libModel.getCheckedSize() / (1024.0*1024.0));
@@ -358,6 +386,11 @@ public class GUI {
         txtLibDir.setText(libModel.prefs.getLibraryDir());
         txtListsDir.setText(libModel.prefs.getListsDir());
         txtListsSyncDir.setText(libModel.prefs.getListsSyncDir());
+    }
+    
+    public void setPlaylistsModel(PlaylistListModel model) {
+        playlistsModel = model;
+        playlistsList.setModel(model);
     }
     
     public void setStatus(String status) {
@@ -470,6 +503,57 @@ public class GUI {
             libModel.search(txtSearch.getText());
         }
     }
+    
+    //
+    // playlists listener
+    //
+    
+
+    private class PlaylistsListListSelectionListener implements ListSelectionListener {
+        public void valueChanged(ListSelectionEvent e) {
+            if (playlistsList.isSelectionEmpty()) {
+                return;
+            }
+            playlistArea.setText(playlistsModel.getElementAt(playlistsList.getSelectedIndex()).fileNamesToString());
+        }
+    }
+    
+    private class BtnRefreshActionListener implements ActionListener {
+        public void actionPerformed(ActionEvent e) {
+            playlistsList.clearSelection();
+            playlistsModel.clear();
+            File[] playlistFiles = new File(libModel.prefs.getListsDir()).listFiles();
+            for (File file : playlistFiles) {
+                String path = file.getAbsolutePath();
+                path = path.replace("\\", "/"); // windows...
+                if (!path.substring(path.length()-4, path.length()).equals("m3u8") &&
+                    !path.substring(path.length()-3, path.length()).equals("m3u")) {
+                    continue;
+                }
+                
+                int nameBegin = path.lastIndexOf("/") + 1;
+                int nameEnd = path.lastIndexOf(".");
+                String name = path.substring(nameBegin, nameEnd);
+                Playlist pl = new Playlist(name);
+                pl.readFromFile(path);
+                playlistsModel.add(pl);
+            }
+        }
+    }
+    
+
+    private class BtnSyncListsActionListener implements ActionListener {
+        public void actionPerformed(ActionEvent e) {
+            setButtonsEnabled(false);
+            playlistsModel.convertAndSync();
+            setButtonsEnabled(true);
+        }
+    }
+    
+    //
+    // preferences listeners
+    //
+    
     private class BtnChooseDirActionListener implements ActionListener {
         public void actionPerformed(ActionEvent arg0) {
             JFileChooser chooser = new JFileChooser();
@@ -527,4 +611,5 @@ public class GUI {
             }
         }
     }
+
 }

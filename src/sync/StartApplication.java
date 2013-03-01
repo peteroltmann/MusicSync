@@ -15,7 +15,7 @@ public class StartApplication {
         			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
                     GUI window = new GUI();
                     LibraryTableModel model = new LibraryTableModel(window);
-                    window.setModel(model);
+                    window.setLibraryModel(model);
                     window.setVisible(true);
                 } catch (Exception e) {
                     e.printStackTrace();

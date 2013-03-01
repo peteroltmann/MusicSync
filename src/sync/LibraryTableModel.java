@@ -4,6 +4,8 @@ import static sync.Preferences.*;
 
 import javax.swing.table.AbstractTableModel;
 
+import playlists.Playlist;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -25,6 +27,8 @@ public class LibraryTableModel extends AbstractTableModel {
     private String[] colNames;
     private List<Song> lib;
     private List<Song> displayed; // key: list index
+    
+    private PlaylistListModel playlists_;
     
     /**
      * Constructs a new {@link LibraryTableModel}.
@@ -60,6 +64,31 @@ public class LibraryTableModel extends AbstractTableModel {
         }
         
         displayed = lib;
+        
+        // TODO: regeln von prefs woanders, ebenso playlists
+        
+        // Playlists:
+        
+        playlists_ = new PlaylistListModel();
+        gui_.setPlaylistsModel(playlists_);
+        
+        File[] playlistFiles = new File(prefs.getListsDir()).listFiles();
+        for (File file : playlistFiles) {
+            String path = file.getAbsolutePath();
+            path = path.replace("\\", "/"); // windows...
+            if (!path.substring(path.length()-4, path.length()).equals("m3u8") &&
+                !path.substring(path.length()-3, path.length()).equals("m3u")) {
+                continue;
+            }
+            
+            int nameBegin = path.lastIndexOf("/") + 1;
+            int nameEnd = path.lastIndexOf(".");
+            String name = path.substring(nameBegin, nameEnd);
+            Playlist pl = new Playlist(name);
+            pl.readFromFile(path);
+            playlists_.add(pl);
+        }
+        
     }
 
     @Override
